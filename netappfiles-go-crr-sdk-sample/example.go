@@ -22,8 +22,8 @@ import (
 
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/sdkutils"
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/utils"
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/netapp/mgmt/netapp"
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/netapp/armnetapp"
 )
 
 const (
@@ -57,8 +57,8 @@ var (
 	volumeSizeBytes       int64 = 107374182400  // 100GiB (minimum volume size)
 	protocolTypes               = []string{"NFSv3"}
 	sampleTags                  = map[string]*string{
-		"Author":  to.StringPtr("ANF Go CRR SDK Sample"),
-		"Service": to.StringPtr("Azure Netapp Files"),
+		"Author":  to.Ptr("ANF Go CRR SDK Sample"),
+		"Service": to.Ptr("Azure Netapp Files"),
 	}
 
 	// ANF Resource Properties
@@ -174,18 +174,18 @@ func main() {
 		utils.ConsoleOutput(fmt.Sprintf("Creating %v NFSv3 Volume...", side))
 
 		// Build data protection object if Secondary side.
-		dataProtectionObject := netapp.VolumePropertiesDataProtection{}
+		dataProtectionObject := armnetapp.VolumePropertiesDataProtection{}
 		if side == "Secondary" {
 			utils.ConsoleOutput(fmt.Sprintf("\tCreating data protection object since this is %v volume...", side))
 			utils.ConsoleOutput(fmt.Sprintf("\tRemote volume id is %v...", anfResources["Primary"].VolumeID))
-			replicationObject := netapp.ReplicationObject{
-				EndpointType:           "dst",
-				RemoteVolumeRegion:     to.StringPtr(anfResources["Primary"].Location),
-				RemoteVolumeResourceID: to.StringPtr(anfResources["Primary"].VolumeID),
-				ReplicationSchedule:    "hourly",
+			replicationObject := armnetapp.ReplicationObject{
+				EndpointType:           to.Ptr(armnetapp.EndpointTypeDst),
+				RemoteVolumeRegion:     to.Ptr(anfResources["Primary"].Location),
+				RemoteVolumeResourceID: to.Ptr(anfResources["Primary"].VolumeID),
+				ReplicationSchedule:    to.Ptr(armnetapp.ReplicationScheduleHourly),
 			}
 
-			dataProtectionObject = netapp.VolumePropertiesDataProtection{
+			dataProtectionObject = armnetapp.VolumePropertiesDataProtection{
 				Replication: &replicationObject,
 			}
 		}
@@ -275,7 +275,7 @@ func exit(cntx context.Context) {
 
 				// Break replication
 				utils.ConsoleOutput(fmt.Sprintf("\tWaiting for Mirrored state from %v volume...", anfResources[side].VolumeName))
-				sdkutils.WaitForMirrorState(cntx, anfResources[side].VolumeID, netapp.MirrorStateMirrored, 60, 50)
+				sdkutils.WaitForMirrorState(cntx, anfResources[side].VolumeID, armnetapp.MirrorStateMirrored, 60, 50)
 				utils.ConsoleOutput(fmt.Sprintf("\tBreaking volume replication on %v volume...", anfResources[side].VolumeName))
 				err := sdkutils.BreakAnfVolumeReplication(
 					cntx,
@@ -292,7 +292,7 @@ func exit(cntx context.Context) {
 
 				// Delete replication
 				utils.ConsoleOutput(fmt.Sprintf("\tWaiting for Broken state from %v volume...", anfResources[side].VolumeName))
-				sdkutils.WaitForMirrorState(cntx, anfResources[side].VolumeID, netapp.MirrorStateBroken, 60, 50)
+				sdkutils.WaitForMirrorState(cntx, anfResources[side].VolumeID, armnetapp.MirrorStateBroken, 60, 50)
 				utils.ConsoleOutput(fmt.Sprintf("\tRemoving data protection object from %v volume...", anfResources[side].VolumeName))
 				err = sdkutils.DeleteAnfVolumeReplication(
 					cntx,
