@@ -35,26 +35,34 @@ If you don't already have a Microsoft Azure subscription, you can get a FREE tri
 4. Resource Group(s) created
 5. Virtual Networks (both for primary and secondary volumes) with a delegated subnet to Microsoft.Netapp/volumes resource. For more information, see [Guidelines for Azure NetApp Files network planning](https://docs.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-network-topologies).
 6. Adjust variable contents within `var()` block at `example.go` file to match your environment
-7. For this sample Go console application to work, authentication is needed. The chosen method for this sample is using service principals:
-    * Within an [Azure Cloud Shell](https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart) session, make sure you're logged on at the subscription where you want to be associated with the service principal by default: 
+7. For this sample Go console application work, we need to authenticate through az cli.
+   * From terminal, perform login to your Azure account:
 
-      ```bash
-      az account show
-      ```
+     ```bash
+     az login
+     ```
 
-      If this is not the correct subscription, use: 
+   * Set the subscription to be used:
 
-      ```bash
-      az account set -s <subscription name or id>  
-      ```
+     ```bash
+     az account set -s <subscription name or id>
+     ```
 
-    * Create a service principal using Azure CLI: 
+   * Set the subscription ID environment variable:
 
-      ```bash
-      az ad sp create-for-rbac --sdk-auth
-      ```
+     **PowerShell example:**
 
-      >Note: This command will automatically assign RBAC contributor role to the service principal at subscription level. You can narrow down the scope to the specific resource group where your tests will create the resources.
+     ```powershell
+     $env:AZURE_SUBSCRIPTION_ID="<your subscription id>"
+     ```
+
+     **Bash example:**
+
+     ```bash
+     export AZURE_SUBSCRIPTION_ID="<your subscription id>"
+     ```
+
+    >Note: for other Azure Active Directory authentication methods for Go, please refer to [Authentication methods in the Azure SDK for Go](https://docs.microsoft.com/en-us/azure/go/azure-sdk-go-authorization).
 
     * Copy the output content, paste it in a file called azureauth.json, and secure it with file system permissions (make sure it is not inside of any repo).
     * Set an environment variable pointing to the file path you just created. Here is an example with Powershell and bash:
@@ -79,9 +87,9 @@ This sample project demonstrates how to enable cross-region replication in Azure
 
 The process of enabling cross-region replication involves creating the primary resources, including primary volume.  Then we continue to create the secondary resources, but the secondary volume needs to contain the Data Replication Object. After this step, we authorize the replication from the primary volume, referencing the resource ID of the secondary volume.
 
-In addition, we use some non-sensitive information from the *file-based authentication* file where we initially get the subscription ID. This information is used for the test to check if the subnets provided exist before creating any Azure NetApp Files resources, failing execution if they're missing.
+In addition, in the initial stages, we get the subscription ID. This information is used for the test we perform to check if the subnet provided exists before creating any Azure NetApp Files resources, failing execution if they're missing.
 
-Authentication is made on each operation where we obtain an authorizer to pass to each client we instantiate (in Azure Go SDK for NetAppFiles each resource has its own client). For more information about the authentication process used, see the [Use file-based authentication](https://docs.microsoft.com/en-us/azure/go/azure-sdk-go-authorization#use-file-based-authentication) section in [Authentication methods in the Azure SDK for Go](https://docs.microsoft.com/en-us/azure/go/azure-sdk-go-authorization).
+Authentication is made on each operation where we obtain an authorizer to pass to each client we instantiate (in Azure Go SDK for Azure NetApp Files, each resource has its own client). For more information about the authentication process used, see the [Authentication methods in the Azure SDK for Go](https://docs.microsoft.com/en-us/azure/go/azure-sdk-go-authorization) document.
 
 The last step is the cleanup process (which is not enabled by default; you need to change variable `shouldCleanUp` to `true` at `example.go` file `var()` section to clean up). The process must delete all resources in the reverse order, following the hierarchy; otherwise, we can't remove resources that have nested resources. Before removing the secondary volume, we need to remove the data replication object on it. If there is an error during the application execution, the cleanup process does not take place, and you need to manually perform this task.
 The cleanup process uses a function called `WaitForNoANFResource`, while other parts of the code uses `WaitForANFResource`.  Currently, this behavior is required in order to work around the ARM behavior that reports that the object was deleted when in fact its deletion is still in progress (similarly, stating that volume is fully created while the creation is still completing). Also, we will see functions called `GetAnf<resource type>`; these functions were created in this sample to get the name of the resource without its hierarchy represented in the `<resource type>.name` property, which cannot be used directly in other methods of Azure NetApp Files client like `get`.
@@ -90,25 +98,25 @@ The cleanup process uses a function called `WaitForNoANFResource`, while other p
 
 ## Contents
 
-| File/folder                 | Description                                                                                                      |
-|-----------------------------|------------------------------------------------------------------------------------------------------------------|
-| `media\`                       | Folder that contains screenshots.                                                                                              |
-| `netappfiles-go-crr-sdk-sample\`                       | Sample source code folder.                                                                                              |
-| `netappfiles-go-crr-sdk-sample\example.go`            | Sample main file.                                                                                                |
-| `netappfiles-go-crr-sdk-sample\go.mod`            |The go.mod file defines the module’s module path, which is also the import path used for the root directory, and its dependency requirements, which are the other modules needed for a successful build.|
-| `netappfiles-go-crr-sdk-sample\go.sum`            | The go.sum file contains hashes for each of the modules and it's versions used in this sample|
-| `netappfiles-go-crr-sdk-sample\internal\`       | Folder that contains all internal packages dedicated to this sample.                |
-| `netappfiles-go-crr-sdk-sample\internal\iam\iam.go` | Package that allows us to get the `authorizer` object from Azure Active Directory by using the `NewAuthorizerFromFile` function. |
-| `netappfiles-go-crr-sdk-sample\internal\models\models.go`       | Provides models for this sample, e.g. `AzureAuthInfo` models the authorization file.                   |
-| `netappfiles-go-crr-sdk-sample\internal\sdkutils\sdkutils.go`       | Contains all functions that directly uses the SDK and some helper functions.                   |
-| `netappfiles-go-crr-sdk-sample\internal\uri\uri.go`       | Provides various functions to parse resource IDs and get information or perform validations.                   |
-| `netappfiles-go-crr-sdk-sample\internal\utils\utils.go`       | Provides generic functions.                   |
-| `.gitignore`                | Define what to ignore at commit time.                                                                            |
-| `CHANGELOG.md`              | List of changes to the sample.                                                                                   |
-| `CONTRIBUTING.md`           | Guidelines for contributing to the sample.                                                                       |
-| `README.md`                 | This README file.                                                                                                |
-| `LICENSE`                   | The license for the sample.                                                                                      |
-| `CODE_OF_CONDUCT.md`        | Microsoft's Open Source Code of Conduct.                                                                         |
+| File/folder | Description |
+|:---|:---|
+| `media/` | Folder that contains screenshots. |
+| `netappfiles-go-crr-sdk-sample/` | Sample source code folder. |
+| `netappfiles-go-crr-sdk-sample/example.go` | Sample main file. |
+| `netappfiles-go-crr-sdk-sample/go.mod` | The go.mod file defines the module’s module path, which is also the import path used for the root directory, and its dependency requirements, which are the other modules needed for a successful build. |
+| `netappfiles-go-crr-sdk-sample/go.sum` | The go.sum file contains hashes for each of the modules and its versions used in this sample. |
+| `netappfiles-go-crr-sdk-sample/internal/` | Folder that contains all internal packages dedicated to this sample. |
+| `netappfiles-go-crr-sdk-sample/internal/iam/iam.go` | Package that allows us to get the `authorizer` object from Azure Active Directory by using the `NewAuthorizerFromFile` function. |
+| `netappfiles-go-crr-sdk-sample/internal/models/models.go` | Provides models for this sample, e.g. `AzureAuthInfo` models the authorization file. |
+| `netappfiles-go-crr-sdk-sample/internal/sdkutils/sdkutils.go` | Contains all functions that directly uses the SDK and some helper functions. |
+| `netappfiles-go-crr-sdk-sample/internal/uri/uri.go` | Provides various functions to parse resource IDs and get information or perform validations. |
+| `netappfiles-go-crr-sdk-sample/internal/utils/utils.go` | Provides generic functions. |
+| `.gitignore` | Define what to ignore at commit time. |
+| `CHANGELOG.md` | List of changes to the sample. |
+| `CONTRIBUTING.md` | Guidelines for contributing to the sample. |
+| `README.md` | This README file. |
+| `LICENSE` | The license for the sample. |
+| `CODE_OF_CONDUCT.md` | Microsoft's Open Source Code of Conduct. |
 
 ## How to run
 
@@ -134,11 +142,12 @@ The cleanup process uses a function called `WaitForNoANFResource`, while other p
     cd netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample
     ```
 4. Make sure you have the `azureauth.json` and its environment variable with the path to it defined. See [prerequisites](#Prerequisites).
-6. Edit file **example.go** `var()` block and change the variables contents as appropriate (names are self-explanatory).
-7. Run the sample: 
-    ```bash
-    go run .
-    ```
+5. Edit file **example.go** `var()` block and change the variables contents as appropriate (names are self-explanatory).
+6. Run the sample:
+
+  ```bash
+  go run .
+  ```
 
 Sample output
 ![e2e execution](./media/e2e-go.png)

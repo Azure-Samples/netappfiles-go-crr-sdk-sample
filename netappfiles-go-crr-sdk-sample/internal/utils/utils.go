@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 
@@ -79,4 +81,43 @@ func GetPassword(prompt string) string {
 	bytePassword, _ := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println()
 	return strings.TrimSpace(string(bytePassword))
+}
+
+// GetSubscriptionIdFromEnv gets the Azure Subscription ID from environment variable
+func GetSubscriptionIdFromEnv() (string, error) {
+	subscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
+	if subscriptionID == "" {
+		return "", fmt.Errorf("AZURE_SUBSCRIPTION_ID environment variable is not set")
+	}
+	return subscriptionID, nil
+}
+
+// GetSubscriptionIdFromAzCli gets the Azure Subscription ID using the Azure CLI
+func GetSubscriptionIdFromAzCli() (string, error) {
+	cmd := exec.Command("az", "account", "show", "--query", "id", "-o", "tsv")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Printf("Error running az account show: %v\n", err)
+		return "", err
+	}
+	subscriptionID := strings.TrimSpace(string(output))
+	return subscriptionID, nil
+}
+
+func GetSubscriptionId() (string, error) {
+	var errs []string
+
+	subscriptionID, err := GetSubscriptionIdFromEnv()
+	if err == nil {
+		return subscriptionID, nil
+	}
+	errs = append(errs, fmt.Sprintf("GetSubscriptionIdFromEnv error: %v", err))
+
+	subscriptionID, err = GetSubscriptionIdFromAzCli()
+	if err == nil {
+		return subscriptionID, nil
+	}
+	errs = append(errs, fmt.Sprintf("GetSubscriptionIdFromAzCli error: %v", err))
+
+	return "", fmt.Errorf(strings.Join(errs, "; "))
 }

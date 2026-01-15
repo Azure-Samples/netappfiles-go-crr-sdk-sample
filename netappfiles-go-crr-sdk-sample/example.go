@@ -23,7 +23,7 @@ import (
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/sdkutils"
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/utils"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/netapp/armnetapp"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/netapp/armnetapp/v8"
 )
 
 const (
@@ -65,10 +65,10 @@ var (
 	anfResources = map[string]*Properties{
 		"Primary": {
 			Location:              "westus",
-			ResourceGroupName:     "anf-primary-rg",
-			VnetResourceGroupName: "anf-primary-rg",
-			VnetName:              "westus-primary-vnet",
-			SubnetName:            "anf-primary-sn",
+			ResourceGroupName:     "anf-primary-crr-rg",
+			VnetResourceGroupName: "anf-primary-crr-rg",
+			VnetName:              "westus-primary-crr-vnet",
+			SubnetName:            "anf-primary-crr-sn",
 			AnfAccountName:        "PrimaryANFAccount",
 			CapacityPoolName:      "PrimaryPool",
 			ServiceLevel:          "Premium",
@@ -76,10 +76,10 @@ var (
 		},
 		"Secondary": {
 			Location:              "eastus",
-			ResourceGroupName:     "anf-secondary-rg",
-			VnetResourceGroupName: "anf-secondary-rg",
-			VnetName:              "eastus-secondary-vnet",
-			SubnetName:            "anf-secondary-sn",
+			ResourceGroupName:     "anf-secondary-crr-rg",
+			VnetResourceGroupName: "anf-secondary-crr-rg",
+			VnetName:              "eastus-secondary-crr-vnet",
+			SubnetName:            "anf-secondary-crr-sn",
 			AnfAccountName:        "SecondaryANFAccount",
 			CapacityPoolName:      "SecondaryPool",
 			ServiceLevel:          "Standard",
@@ -100,12 +100,11 @@ func main() {
 
 	utils.PrintHeader("Azure NetAppFiles Go CRR SDK Sample - Sample application that enables cross-region replication on an NFSv3 volume.")
 
-	// Getting subscription ID from authentication file
-	config, err := utils.ReadAzureBasicInfoJSON(os.Getenv("AZURE_AUTH_LOCATION"))
+	// Getting subscription ID from environment variable
+	subscriptionID, err := utils.GetSubscriptionId()
 	if err != nil {
-		utils.ConsoleOutput(fmt.Sprintf("an error ocurred getting non-sensitive info from AzureAuthFile: %v", err))
+		utils.ConsoleOutput(fmt.Sprintf("an error ocurred getting the subscription ID: %v", err))
 		exitCode = 1
-		shouldCleanUp = false
 		return
 	}
 
@@ -116,7 +115,7 @@ func main() {
 
 		// Checking if subnet exists before any other operation starts
 		subnetID := fmt.Sprintf("/subscriptions/%v/resourceGroups/%v/providers/Microsoft.Network/virtualNetworks/%v/subnets/%v",
-			*config.SubscriptionID,
+			subscriptionID,
 			anfResources[side].VnetResourceGroupName,
 			anfResources[side].VnetName,
 			anfResources[side].SubnetName,
