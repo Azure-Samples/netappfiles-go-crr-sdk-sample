@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/models"
 	"github.com/Azure-Samples/netappfiles-go-crr-sdk-sample/netappfiles-go-crr-sdk-sample/internal/utils"
@@ -24,19 +23,19 @@ import (
 
 // GetAuthorizer gets an authorization token to be used within ANF client
 func GetAuthorizer() (azcore.TokenCredential, string, error) {
-	// Getting information from authentication file
-	info, err := readAuthJSON(os.Getenv("AZURE_AUTH_LOCATION"))
-	if err != nil {
-		return nil, "", err
-	}
 
-	authorizer, err := azidentity.NewClientSecretCredential(*info.TenantID, *info.ClientID, *info.ClientSecret, nil)
+	authorizer, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		utils.ConsoleOutput(fmt.Sprintf("%v", err))
 		return nil, "", err
 	}
 
-	return authorizer, *info.SubscriptionID, nil
+	subscriptionID, err := utils.GetSubscriptionId()
+	if err != nil {
+		return nil, "", err
+	}
+
+	return authorizer, subscriptionID, nil
 }
 
 // readAuthJSON reads the Azure Authentication json file json file and unmarshals it.
